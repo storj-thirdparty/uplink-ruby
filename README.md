@@ -14,14 +14,10 @@ Ruby bindings to the [libuplink](https://github.com/storj/uplink-c) Storj API li
 
 ### Installation
 
-```bash
-gem install uplink-ruby
-```
-
-Or add this line to your application's Gemfile:
+Add this line to your application's Gemfile:
 
 ```ruby
-gem 'uplink-ruby'
+gem 'uplink-ruby', git: 'https://github.com/Your-Data/uplink-ruby'
 ```
 
 ### Running the Tests
