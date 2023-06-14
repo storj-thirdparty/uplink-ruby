@@ -22,6 +22,17 @@ module Uplink
     ensure
       UplinkLib.uplink_free_access_result(result) if result
     end
+
+    def derive_encryption_key(passphrase, salt, length)
+      raise ArgumentError, 'salt argument is not a string' unless salt.is_a?(String)
+
+      result = UplinkLib.uplink_derive_encryption_key(passphrase, salt, length)
+      ErrorUtil.handle_result_error(result)
+
+      yield result[:encryption_key]
+    ensure
+      UplinkLib.uplink_free_encryption_key_result(result) if result
+    end
   end
 
   class Access
@@ -39,6 +50,66 @@ module Uplink
     ensure
       project.close if auto_close && project
       UplinkLib.uplink_free_project_result(result) if result
+    end
+
+    def satellite_address
+      result = UplinkLib.uplink_access_satellite_address(@access)
+      ErrorUtil.handle_result_error(result)
+
+      result[:string]
+    ensure
+      UplinkLib.uplink_free_string_result(result) if result
+    end
+
+    def serialize
+      result = UplinkLib.uplink_access_serialize(@access)
+      ErrorUtil.handle_result_error(result)
+
+      result[:string]
+    ensure
+      UplinkLib.uplink_free_string_result(result) if result
+    end
+
+    def share(permission, prefixes)
+      permission_options = UplinkLib::UplinkPermission.new
+      if permission && !permission.empty?
+        permission_options[:allow_download] = permission[:allow_download]
+        permission_options[:allow_upload] = permission[:allow_upload]
+        permission_options[:allow_list] = permission[:allow_list]
+        permission_options[:allow_delete] = permission[:allow_delete]
+        permission_options[:not_before] = permission[:not_before].to_i if permission[:not_before]
+        permission_options[:not_after] = permission[:not_after].to_i if permission[:not_after]
+      end
+
+      prefixes_count = prefixes&.size || 0
+      mem_prefixes = nil
+
+      if prefixes_count.positive?
+        mem_prefixes = FFI::MemoryPointer.new(UplinkLib::UplinkSharePrefix, prefixes_count)
+
+        prefixes.each_with_index do |prefix, i|
+          bucket = FFI::MemoryPointer.from_string(prefix[:bucket]) if prefix[:bucket]
+          prefix_val = FFI::MemoryPointer.from_string(prefix[:prefix]) if prefix[:prefix]
+
+          prefix_entry = UplinkLib::UplinkSharePrefix.new(mem_prefixes + (i * UplinkLib::UplinkSharePrefix.size))
+          prefix_entry[:bucket] = bucket
+          prefix_entry[:prefix] = prefix_val
+        end
+      end
+
+      result = UplinkLib.uplink_access_share(@access, permission_options, mem_prefixes, prefixes_count)
+      ErrorUtil.handle_result_error(result)
+
+      yield Access.new(result)
+    ensure
+      UplinkLib.uplink_free_access_result(result) if result
+    end
+
+    def override_encryption_key(bucket, prefix, encryption_key)
+      error = UplinkLib.uplink_access_override_encryption_key(@access, bucket, prefix, encryption_key)
+      ErrorUtil.handle_error(error)
+    ensure
+      UplinkLib.uplink_free_error(error) if error
     end
   end
 
@@ -96,7 +167,7 @@ module Uplink
       upload_options = nil
       if options && !options.empty?
         upload_options = UplinkLib::UplinkUploadOptions.new
-        upload_options[:expires] = options[:expires]&.to_i
+        upload_options[:expires] = options[:expires].to_i if options[:expires]
       end
 
       result = UplinkLib.uplink_upload_object(@project, bucket_name, object_key, upload_options)
@@ -111,8 +182,8 @@ module Uplink
       download_options = nil
       if options && !options.empty?
         download_options = UplinkLib::UplinkDownloadOptions.new
-        download_options[:offset] = options[:offset]&.to_i if options[:offset]
-        download_options[:length] = options[:length]&.to_i if options[:length]
+        download_options[:offset] = options[:offset].to_i if options[:offset]
+        download_options[:length] = options[:length].to_i if options[:length]
       end
 
       result = UplinkLib.uplink_download_object(@project, bucket_name, object_key, download_options)
