@@ -47,76 +47,153 @@ gem 'uplink-ruby', git: 'https://github.com/Your-Data/uplink-ruby'
 Example for basic operations
 
 ```ruby
-  access_string = ENV.fetch('UPLINK_ACCESS_GRANT')
+access_string = ENV.fetch('UPLINK_ACCESS_GRANT')
 
-  Uplink.parse_access(access_string) do |access|
-    access.open_project do |project|
-      bucket_name = 'bucket1'
-      key_path = 'foo/test.txt'
+bucket_name = 'bucket1'
+key_path = 'foo/test.txt'
 
-      # Create a bucket if it doesn't exist
-      project.ensure_bucket(bucket_name)
+Uplink.parse_access(access_string) do |access|
+  access.open_project do |project|
+    # Create a bucket if it doesn't exist
+    project.ensure_bucket(bucket_name)
 
-      # Upload an object into a bucket
-      contents = 'Hello World'
-      project.upload_object(bucket_name, key_path) do |upload|
-        file_size = contents.length
-        uploaded_total = 0
+    # Upload an object into a bucket
+    contents = 'Hello World'
+    project.upload_object(bucket_name, key_path) do |upload|
+      file_size = contents.length
+      uploaded_total = 0
 
-        while uploaded_total < file_size
-          len = file_size - uploaded_total
+      while uploaded_total < file_size
+        len = file_size - uploaded_total
 
-          bytes_written = upload.write(contents[uploaded_total, len], len)
+        bytes_written = upload.write(contents[uploaded_total, len], len)
+        uploaded_total += bytes_written
+      end
+
+      upload.commit
+    end
+
+    # Get info of an object
+    object = project.stat_object(bucket_name, key_path)
+    puts "Object info: key=#{object.key}, created_time=#{object.created}, length=#{object.content_length}"
+
+    # Download an object
+    downloaded_data = []
+    project.download_object(bucket_name, key_path) do |download|
+      file_size = 0
+
+      object = download.info
+      file_size = object.content_length
+
+      chunk_size = 1000
+      downloaded_total = 0
+
+      loop do
+        download_size_left = file_size - downloaded_total
+        len = chunk_size <= 0 ? download_size_left : [chunk_size, download_size_left].min
+
+        bytes_read, is_eof = download.read(downloaded_data, len)
+        downloaded_total += bytes_read
+
+        break if is_eof
+      end
+    end
+
+    data_str = downloaded_data.pack('C*').force_encoding('UTF-8')
+    puts "Object data=#{data_str}"
+
+    # Iterate objects in a bucket
+    project.list_objects(bucket_name, { recursive: true, system: true }) do |it|
+      while it.next?
+        object = it.item
+        puts "Object info: key=#{object.key}, created_time=#{object.created}, length=#{object.content_length}"
+      end
+    end
+
+    # Delete an object
+    project.delete_object(bucket_name, key_path)
+
+    # Delete a bucket
+    project.delete_bucket(bucket_name)
+  end
+end
+```
+
+Example for multipart uploads
+
+```ruby
+require 'securerandom'
+
+access_string = ENV.fetch('UPLINK_ACCESS_GRANT')
+
+bucket_name = 'bucket1'
+key_path = 'foo/test.txt'
+
+Uplink.parse_access(access_string) do |access|
+  access.open_project do |project|
+    project.ensure_bucket(bucket_name)
+
+    five_mib_size = 5 * 1024 * 1024
+    six_mib_size = 6 * 1024 * 1024
+
+    # create 11 MiB size of sample data for upload
+    contents = SecureRandom.random_bytes(six_mib_size + five_mib_size)
+
+    file_size = contents.size
+    part_size = six_mib_size
+
+    chunk_size = 1000
+    uploaded_total = 0
+
+    upload_info = project.begin_upload(bucket_name, key_path)
+
+    # divide the upload into 2 parts with a maximum upload size of 6 MiB for each part
+    2.times do |i|
+      project.upload_part(bucket_name, key_path, upload_info.upload_id, i + 1) do |part_upload|
+        upload_size = [(i + 1) * part_size, file_size].min
+
+        while uploaded_total < upload_size
+          upload_size_left = upload_size - uploaded_total
+          len = chunk_size <= 0 ? upload_size_left : [chunk_size, upload_size_left].min
+
+          bytes_written = part_upload.write(contents[uploaded_total, len], len)
           uploaded_total += bytes_written
         end
 
-        upload.commit
+        part_upload.commit
       end
-
-      # Get info of an object
-      object = project.stat_object(bucket_name, key_path)
-      puts "Object info: key=#{object.key}, created_time=#{object.created}, length=#{object.content_length}"
-
-      # Download an object
-      downloaded_data = []
-      project.download_object(bucket_name, key_path) do |download|
-        file_size = 0
-
-        object = download.info
-        file_size = object.content_length
-
-        chunk_size = 1000
-        downloaded_total = 0
-
-        loop do
-          download_size_left = file_size - downloaded_total
-          len = chunk_size <= 0 ? download_size_left : [chunk_size, download_size_left].min
-
-          bytes_read, is_eof = download.read(downloaded_data, len)
-          downloaded_total += bytes_read
-
-          break if is_eof
-        end
-      end
-
-      data_str = downloaded_data.pack('C*').force_encoding('UTF-8')
-      puts "Object data=#{data_str}"
-
-      # Iterate objects in a bucket
-      project.list_objects(bucket_name, { recursive: true, system: true }) do |it|
-        while it.next?
-          object = it.item
-          puts "Object info: key=#{object.key}, created_time=#{object.created}, length=#{object.content_length}"
-        end
-      end
-
-      # Delete an object
-      project.delete_object(bucket_name, key_path)
-
-      # Delete a bucket
-      project.delete_bucket(bucket_name)
     end
+
+    project.commit_upload(bucket_name, key_path, upload_info.upload_id)
   end
+end
+```
+
+Example for creating a share link
+
+```ruby
+access_string = ENV.fetch('UPLINK_ACCESS_GRANT')
+
+auth_service_address = 'auth.storjshare.io:7777'
+link_sharing_address = 'https://link.storjshare.io'
+
+bucket_name = 'bucket1'
+key_path = 'foo/test.txt'
+
+Uplink.parse_access(access_string) do |access|
+  permission = { allow_download: true }
+  prefixes = [
+    { bucket: bucket_name }
+  ]
+
+  access.share(permission, prefixes) do |shared_access| # create a shared access with appropriate permissions
+    edge_credential = shared_access.edge_register_access({ auth_service_address: auth_service_address }, { is_public: true })
+
+    share_url = edge_credential.join_share_url(link_sharing_address, bucket_name, key_path, { raw: false }) # set `raw` to true for a direct share link
+
+    puts share_url  # https://link.storjshare.io/s/jwp3kkwbcevjhis.../bucket1/foo/test.txt
+  end
+end
 ```
 
 For more usage examples, check the tests in `spec` folder.
