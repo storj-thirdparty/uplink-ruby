@@ -24,14 +24,7 @@ module Uplink
     end
 
     def request_access_with_passphrase_and_config(config, satellite_address, api_key, passphrase)
-      raise ArgumentError, 'config argument is nil' if config.nil?
-
-      config_options = UplinkLib::UplinkConfig.new
-      user_agent = FFI::MemoryPointer.from_string(config[:user_agent]) if config[:user_agent]
-      temp_directory = FFI::MemoryPointer.from_string(config[:temp_directory]) if config[:temp_directory]
-      config_options[:user_agent] = user_agent
-      config_options[:dial_timeout_milliseconds] = config[:dial_timeout_milliseconds]&.to_i || 0
-      config_options[:temp_directory] = temp_directory
+      config_options = UplinkUtil.build_uplink_config(config)
 
       result = UplinkLib.uplink_config_request_access_with_passphrase(config_options, satellite_address, api_key, passphrase)
       ErrorUtil.handle_result_error(result)
@@ -77,14 +70,7 @@ module Uplink
     end
 
     def open_project_with_config(config, auto_close: true)
-      raise ArgumentError, 'config argument is nil' if config.nil?
-
-      config_options = UplinkLib::UplinkConfig.new
-      user_agent = FFI::MemoryPointer.from_string(config[:user_agent]) if config[:user_agent]
-      temp_directory = FFI::MemoryPointer.from_string(config[:temp_directory]) if config[:temp_directory]
-      config_options[:user_agent] = user_agent
-      config_options[:dial_timeout_milliseconds] = config[:dial_timeout_milliseconds]&.to_i || 0
-      config_options[:temp_directory] = temp_directory
+      config_options = UplinkUtil.build_uplink_config(config)
 
       result = UplinkLib.uplink_config_open_project(config_options, @access)
       ErrorUtil.handle_result_error(result)
@@ -246,11 +232,7 @@ module Uplink
     end
 
     def upload_object(bucket_name, object_key, options = nil)
-      upload_options = nil
-      if options && !options.empty?
-        upload_options = UplinkLib::UplinkUploadOptions.new
-        upload_options[:expires] = options[:expires].to_i if options[:expires]
-      end
+      upload_options = UplinkUtil.build_upload_options(options)
 
       result = UplinkLib.uplink_upload_object(@project, bucket_name, object_key, upload_options)
       ErrorUtil.handle_result_error(result)
@@ -261,11 +243,7 @@ module Uplink
     end
 
     def begin_upload(bucket_name, object_key, options = nil)
-      upload_options = nil
-      if options && !options.empty?
-        upload_options = UplinkLib::UplinkUploadOptions.new
-        upload_options[:expires] = options[:expires].to_i if options[:expires]
-      end
+      upload_options = UplinkUtil.build_upload_options(options)
 
       result = UplinkLib.uplink_begin_upload(@project, bucket_name, object_key, upload_options)
       ErrorUtil.handle_result_error(result)
@@ -287,26 +265,10 @@ module Uplink
     def commit_upload(bucket_name, object_key, upload_id, options = nil)
       upload_options = nil
       if options && !options.empty?
+        custom_metadata = nil
+
         if options[:custom_metadata] && !options[:custom_metadata].empty?
-          custom = options[:custom_metadata]
-
-          count = custom.size
-          mem_entries = FFI::MemoryPointer.new(UplinkLib::UplinkCustomMetadataEntry, count)
-
-          custom.to_a.each_with_index do |(key, value), i|
-            mem_key = FFI::MemoryPointer.from_string(key.to_s) if key
-            mem_value = FFI::MemoryPointer.from_string(value.to_s) if value
-
-            entry = UplinkLib::UplinkCustomMetadataEntry.new(mem_entries + (i * UplinkLib::UplinkCustomMetadataEntry.size))
-            entry[:key] = mem_key
-            entry[:key_length] = key ? key.length : 0
-            entry[:value] = mem_value
-            entry[:value_length] = value ? value.to_s.length : 0
-          end
-
-          custom_metadata = UplinkLib::UplinkCustomMetadata.new
-          custom_metadata[:count] = count
-          custom_metadata[:entries] = mem_entries
+          custom_metadata = UplinkUtil.build_custom_metadata(options[:custom_metadata])
         end
 
         upload_options = UplinkLib::UplinkCommitUploadOptions.new
@@ -412,23 +374,7 @@ module Uplink
     end
 
     def update_object_metadata(bucket_name, object_key, new_metadata, options = nil)
-      count = new_metadata.size
-      mem_entries = FFI::MemoryPointer.new(UplinkLib::UplinkCustomMetadataEntry, count)
-
-      new_metadata.to_a.each_with_index do |(key, value), i|
-        mem_key = FFI::MemoryPointer.from_string(key.to_s) if key
-        mem_value = FFI::MemoryPointer.from_string(value.to_s) if value
-
-        entry = UplinkLib::UplinkCustomMetadataEntry.new(mem_entries + (i * UplinkLib::UplinkCustomMetadataEntry.size))
-        entry[:key] = mem_key
-        entry[:key_length] = key ? key.length : 0
-        entry[:value] = mem_value
-        entry[:value_length] = value ? value.to_s.length : 0
-      end
-
-      custom_metadata = UplinkLib::UplinkCustomMetadata.new
-      custom_metadata[:count] = count
-      custom_metadata[:entries] = mem_entries
+      custom_metadata = UplinkUtil.build_custom_metadata(new_metadata)
 
       error = UplinkLib.uplink_update_object_metadata(@project, bucket_name, object_key, custom_metadata, options)
       ErrorUtil.handle_error(error)
@@ -545,23 +491,7 @@ module Uplink
     end
 
     def set_custom_metadata(custom)
-      count = custom.size
-      mem_entries = FFI::MemoryPointer.new(UplinkLib::UplinkCustomMetadataEntry, count)
-
-      custom.to_a.each_with_index do |(key, value), i|
-        mem_key = FFI::MemoryPointer.from_string(key.to_s) if key
-        mem_value = FFI::MemoryPointer.from_string(value.to_s) if value
-
-        entry = UplinkLib::UplinkCustomMetadataEntry.new(mem_entries + (i * UplinkLib::UplinkCustomMetadataEntry.size))
-        entry[:key] = mem_key
-        entry[:key_length] = key ? key.length : 0
-        entry[:value] = mem_value
-        entry[:value_length] = value ? value.to_s.length : 0
-      end
-
-      custom_metadata = UplinkLib::UplinkCustomMetadata.new
-      custom_metadata[:count] = count
-      custom_metadata[:entries] = mem_entries
+      custom_metadata = UplinkUtil.build_custom_metadata(custom)
 
       error = UplinkLib.uplink_upload_set_custom_metadata(@upload, custom_metadata)
       ErrorUtil.handle_error(error)
@@ -609,7 +539,7 @@ module Uplink
       @key = upload_info[:key]
       @is_prefix = upload_info[:is_prefix]
       @created, @expires, @content_length = UplinkUtil.get_system_values(upload_info)
-      @custom = UplinkUtil.get_custom(upload_info)
+      @custom = UplinkUtil.get_custom_metadata(upload_info)
     end
   end
 
@@ -741,7 +671,7 @@ module Uplink
       @key = object[:key]
       @is_prefix = object[:is_prefix]
       @created, @expires, @content_length = UplinkUtil.get_system_values(object)
-      @custom = UplinkUtil.get_custom(object)
+      @custom = UplinkUtil.get_custom_metadata(object)
     end
   end
 
@@ -867,7 +797,7 @@ module Uplink
         [object[:system][:created], object[:system][:expires], object[:system][:content_length]]
       end
 
-      def get_custom(object)
+      def get_custom_metadata(object)
         custom = {}
 
         return custom if object.null? || object[:custom].null?
@@ -887,6 +817,51 @@ module Uplink
         end
 
         custom
+      end
+
+      def build_uplink_config(config)
+        raise ArgumentError, 'config argument is nil' if config.nil?
+
+        config_options = UplinkLib::UplinkConfig.new
+        user_agent = FFI::MemoryPointer.from_string(config[:user_agent]) if config[:user_agent]
+        temp_directory = FFI::MemoryPointer.from_string(config[:temp_directory]) if config[:temp_directory]
+        config_options[:user_agent] = user_agent
+        config_options[:dial_timeout_milliseconds] = config[:dial_timeout_milliseconds]&.to_i || 0
+        config_options[:temp_directory] = temp_directory
+
+        config_options
+      end
+
+      def build_upload_options(options)
+        upload_options = nil
+        if options && !options.empty?
+          upload_options = UplinkLib::UplinkUploadOptions.new
+          upload_options[:expires] = options[:expires].to_i if options[:expires]
+        end
+
+        upload_options
+      end
+
+      def build_custom_metadata(custom)
+        count = custom.size
+        mem_entries = FFI::MemoryPointer.new(UplinkLib::UplinkCustomMetadataEntry, count)
+
+        custom.to_a.each_with_index do |(key, value), i|
+          mem_key = FFI::MemoryPointer.from_string(key.to_s) if key
+          mem_value = FFI::MemoryPointer.from_string(value.to_s) if value
+
+          entry = UplinkLib::UplinkCustomMetadataEntry.new(mem_entries + (i * UplinkLib::UplinkCustomMetadataEntry.size))
+          entry[:key] = mem_key
+          entry[:key_length] = key ? key.length : 0
+          entry[:value] = mem_value
+          entry[:value_length] = value ? value.to_s.length : 0
+        end
+
+        custom_metadata = UplinkLib::UplinkCustomMetadata.new
+        custom_metadata[:count] = count
+        custom_metadata[:entries] = mem_entries
+
+        custom_metadata
       end
     end
   end
