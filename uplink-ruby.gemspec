@@ -8,7 +8,7 @@ Gem::Specification.new do |s|
   s.authors     = ['Your Data Inc']
   s.homepage    = 'https://github.com/Your-Data/uplink-ruby'
   s.license     = 'MIT'
-  s.files       = ['lib/uplink.rb']
+  s.files       = Dir['lib/**/*.rb']
   s.required_ruby_version = '>= 2.6.0'
   s.add_runtime_dependency 'ffi', '~> 1.15.0'
   s.add_development_dependency 'rspec', '~> 3.12.0'
