@@ -37,6 +37,12 @@ gem 'uplink-ruby', git: 'https://github.com/Your-Data/uplink-ruby'
     $ export UPLINK_0_PASSPHRASE="mypassphrase"
     ```
 
+* Install gem dependencies
+
+  ```bash
+  $ bundle install
+  ```
+
 * Run the tests
   ```bash
   $ rspec
