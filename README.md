@@ -47,6 +47,8 @@ gem 'uplink-ruby', git: 'https://github.com/Your-Data/uplink-ruby'
 Example for basic operations
 
 ```ruby
+require 'uplink'
+
 access_string = ENV.fetch('UPLINK_ACCESS_GRANT')
 
 bucket_name = 'bucket1'
@@ -122,6 +124,7 @@ end
 Example for multipart uploads
 
 ```ruby
+require 'uplink'
 require 'securerandom'
 
 access_string = ENV.fetch('UPLINK_ACCESS_GRANT')
@@ -172,6 +175,8 @@ end
 Example for creating a share link
 
 ```ruby
+require 'uplink'
+
 access_string = ENV.fetch('UPLINK_ACCESS_GRANT')
 
 auth_service_address = 'auth.storjshare.io:7777'
