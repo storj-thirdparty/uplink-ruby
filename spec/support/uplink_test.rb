@@ -24,7 +24,7 @@ module UplinkTest
   end
 
   def cleanup(access_string)
-    described_class.parse_access(access_string) do |access|
+    Uplink.parse_access(access_string) do |access|
       access.open_project do |project|
         buckets = []
 
@@ -36,7 +36,7 @@ module UplinkTest
         end
 
         buckets.each { |bucket| project.delete_bucket_with_objects(bucket.name) }
-      rescue described_class::BucketNotFoundError
+      rescue Uplink::BucketNotFoundError
         nil
       end
     end
