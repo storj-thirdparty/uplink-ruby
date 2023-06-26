@@ -17,7 +17,7 @@ Ruby bindings to the [libuplink](https://github.com/storj/uplink-c) Storj API li
 Add this line to your application's Gemfile:
 
 ```ruby
-gem 'uplink-ruby', git: 'https://github.com/Your-Data/uplink-ruby'
+gem 'uplink-ruby', '~> 1.0'
 ```
 
 ### Running the Tests
