@@ -7,6 +7,10 @@ module UplinkLib
 
   ffi_lib 'libuplink.so'
 
+  class UplinkHandle < FFI::Struct
+    layout :_handle, :size_t
+  end
+
   class UplinkAccess < FFI::Struct
     layout :_handle, :size_t
   end
