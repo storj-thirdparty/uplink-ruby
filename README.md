@@ -5,7 +5,12 @@ Ruby bindings to the [libuplink](https://github.com/storj/uplink-c) Storj API li
 ## <b> Getting Started </b>
 
 ### Prerequisites
-* Build the [uplink-c](https://github.com/storj/uplink-c) library.
+* Clone [uplink-c](https://github.com/storj/uplink-c) repository.
+* Check out the release version `v1.7.0`.
+    ```bash
+    $ git checkout tags/v1.7.0
+    ```
+* Run `make build` to build the uplink-c library.
 * The `libuplink.so` file should be created in the `.build` folder.
 * Add the `libuplink.so` location path into `LD_LIBRARY_PATH` environment variable
     ```bash
