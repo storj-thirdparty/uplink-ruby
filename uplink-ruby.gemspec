@@ -2,7 +2,7 @@
 
 Gem::Specification.new do |s|
   s.name        = 'uplink-ruby'
-  s.version     = '1.7.0'
+  s.version     = '1.8.0'
   s.summary     = 'libuplink bindings for ruby'
   s.description = 'Ruby bindings to the libuplink C Storj API library'
   s.authors     = ['Your Data Inc']

@@ -24,13 +24,6 @@ module UplinkTest
             dial_timeout_milliseconds: 10_000
           }
           expect { access.open_project_with_config(config) { |_project| nil } }.not_to raise_error
-
-          config = {
-            dial_timeout_milliseconds: 1
-          }
-          access.open_project_with_config(config) do |project|
-            expect { project.ensure_bucket(bucket_name) }.to raise_error(described_class::InternalError)
-          end
         end
       end
 

@@ -231,7 +231,8 @@ module UplinkLib
 
   class EdgeConfig < FFI::Struct
     layout :auth_service_address, :pointer, # string
-           :certificate_pem, :pointer       # string
+           :certificate_pem, :pointer,      # string
+           :insecure_unencrypted_connection, :bool
   end
 
   class EdgeRegisterAccessOptions < FFI::Struct

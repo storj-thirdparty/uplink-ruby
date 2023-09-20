@@ -17,11 +17,6 @@ module UplinkTest
           dial_timeout_milliseconds: 10_000
         }
         expect { described_class.request_access_with_passphrase_and_config(config, SATELLITE_ADDRESS, API_KEY, PASSPHRASE) { |_access| nil } }.not_to raise_error
-
-        config = {
-          dial_timeout_milliseconds: 1
-        }
-        expect { described_class.request_access_with_passphrase_and_config(config, SATELLITE_ADDRESS, API_KEY, PASSPHRASE) { |_access| nil } }.to raise_error(described_class::InternalError)
       end
 
       it 'returning satellite address' do

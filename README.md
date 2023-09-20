@@ -6,10 +6,10 @@ Ruby bindings to the [libuplink](https://github.com/storj/uplink-c) Storj API li
 
 ### Prerequisites
 * Clone [uplink-c](https://github.com/storj/uplink-c) repository.
-* Check out the release version `v1.7.0`.
+* Check out the release version `v1.8.0`.
     ```bash
     $ git fetch --tags
-    $ git checkout tags/v1.7.0
+    $ git checkout tags/v1.8.0
     ```
 * Run `make build` to build the uplink-c library.
 * The `libuplink.so` file should be created in the `.build` folder.
@@ -23,8 +23,17 @@ Ruby bindings to the [libuplink](https://github.com/storj/uplink-c) Storj API li
 Add this line to your application's Gemfile:
 
 ```ruby
-gem 'uplink-ruby', '~> 1.7.0'
+gem 'uplink-ruby', '~> 1.8.0'
 ```
+
+or from the git:
+
+```ruby
+gem 'uplink-ruby', git: 'https://github.com/storj-thirdparty/uplink-ruby', tag: 'v1.8.0'
+```
+
+Make sure the major & minor version of the gem or git tag matches the uplink-c release version.
+
 
 ### Running the Tests
 * Create a [Storj](https://www.storj.io/) account.
