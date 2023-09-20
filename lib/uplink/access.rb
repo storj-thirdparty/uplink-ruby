@@ -101,6 +101,7 @@ module Uplink
       certificate_pem = FFI::MemoryPointer.from_string(config[:certificate_pem]) if config[:certificate_pem]
       register_config[:auth_service_address] = auth_service_address
       register_config[:certificate_pem] = certificate_pem
+      register_config[:insecure_unencrypted_connection] = config[:insecure_unencrypted_connection]
 
       register_options = nil
       if options && !options.empty?
